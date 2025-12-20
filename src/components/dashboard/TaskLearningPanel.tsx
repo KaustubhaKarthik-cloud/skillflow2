@@ -162,6 +162,9 @@ const TaskLearningPanel = ({ taskId, taskTitle, onReadyForTesting }: TaskLearnin
                         <p className="text-sm text-muted-foreground mt-1">
                           {video.channel}
                         </p>
+                        <p className="text-xs text-primary mt-1 break-all select-all cursor-text">
+                          {video.url}
+                        </p>
                       </div>
                       
                       <div className="flex items-center gap-2 flex-shrink-0">
