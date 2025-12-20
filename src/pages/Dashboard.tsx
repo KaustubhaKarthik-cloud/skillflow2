@@ -5,6 +5,7 @@ import RoadmapSection from "@/components/dashboard/RoadmapSection";
 import TaskBoard from "@/components/dashboard/TaskBoard";
 import GitSimulator from "@/components/dashboard/GitSimulator";
 import ProgressStats from "@/components/dashboard/ProgressStats";
+import AIChatbot from "@/components/dashboard/AIChatbot";
 
 type ActiveView = "roadmap" | "tasks" | "git" | "progress";
 
@@ -48,6 +49,8 @@ const Dashboard = () => {
           {renderContent()}
         </motion.div>
       </main>
+
+      <AIChatbot />
     </div>
   );
 };
