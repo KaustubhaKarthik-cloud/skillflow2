@@ -122,6 +122,26 @@ const TaskTestingPanel = ({
     );
   }
 
+  // If no video summaries available, show message to go back to learning
+  if (videoSummaries.length === 0) {
+    return (
+      <div className="space-y-6 text-center py-8">
+        <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto" />
+        <div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            No Learning Content Found
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Please watch the videos first to generate content for testing.
+          </p>
+        </div>
+        <Button variant="outline" onClick={onBack}>
+          Back to Videos
+        </Button>
+      </div>
+    );
+  }
+
   // Render based on phase
   if (phase === 'reflection') {
     return (
