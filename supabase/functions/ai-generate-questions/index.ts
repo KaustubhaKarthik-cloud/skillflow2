@@ -118,11 +118,17 @@ Generate 3-4 comprehension questions based on this content. Respond with JSON on
     const insertedQuestions = [];
 
     for (let i = 0; i < questions.length; i++) {
+      // Extract just the question text string from the object
+      const questionItem = questions[i];
+      const questionText = typeof questionItem === 'string' 
+        ? questionItem 
+        : questionItem?.question || JSON.stringify(questionItem);
+
       const { data: question, error } = await supabaseClient
         .from('testing_questions')
         .insert({
           attempt_id: attemptId,
-          question_text: questions[i],
+          question_text: questionText,
           order_index: i,
         })
         .select()

@@ -228,34 +228,56 @@ const TaskTestingPanel = ({
         )}
 
         <div className="space-y-4">
-          {questions.map((question, index) => (
-            <motion.div
-              key={question.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">
-                    Question {index + 1}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-foreground">{question.question_text}</p>
-                  <Textarea
-                    placeholder="Type your answer..."
-                    value={answers[question.id] || ''}
-                    onChange={(e) => setAnswers(prev => ({
-                      ...prev,
-                      [question.id]: e.target.value
-                    }))}
-                    rows={3}
-                  />
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+          {questions.map((question, index) => {
+            // Parse question text - handle both string and JSON formats
+            let displayText = question.question_text;
+            try {
+              const parsed = JSON.parse(question.question_text);
+              displayText = parsed?.question || parsed?.text || question.question_text;
+            } catch {
+              // It's already a plain string, use as-is
+            }
+            
+            const isAnswered = !!answers[question.id]?.trim();
+            
+            return (
+              <motion.div
+                key={question.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className={`transition-all duration-200 ${isAnswered ? 'border-primary/40 bg-primary/5' : 'hover:border-primary/20'}`}>
+                  <CardContent className="pt-5 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${isAnswered ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                        {index + 1}
+                      </div>
+                      <p className="text-foreground leading-relaxed pt-1 flex-1">
+                        {displayText}
+                      </p>
+                    </div>
+                    <Textarea
+                      placeholder="Type your answer here..."
+                      value={answers[question.id] || ''}
+                      onChange={(e) => setAnswers(prev => ({
+                        ...prev,
+                        [question.id]: e.target.value
+                      }))}
+                      rows={3}
+                      className="resize-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    {isAnswered && (
+                      <div className="flex items-center gap-1 text-xs text-primary">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Answered</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
 
         <Button
