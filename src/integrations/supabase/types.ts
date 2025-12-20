@@ -14,7 +14,239 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_reviews: {
+        Row: {
+          created_at: string
+          id: string
+          improvements: string | null
+          next_action: string | null
+          score: number
+          strengths: string | null
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          improvements?: string | null
+          next_action?: string | null
+          score: number
+          strengths?: string | null
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          improvements?: string | null
+          next_action?: string | null
+          score?: number
+          strengths?: string | null
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_reviews_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage: {
+        Row: {
+          action: Database["public"]["Enums"]["ai_action_type"]
+          count: number
+          id: string
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["ai_action_type"]
+          count?: number
+          id?: string
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["ai_action_type"]
+          count?: number
+          id?: string
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      milestones: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_index: number
+          roadmap_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          roadmap_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          roadmap_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "roadmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roadmaps: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          content: string
+          created_at: string
+          github_link: string | null
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          github_link?: string | null
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          github_link?: string | null
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          milestone_id: string
+          order_index: number
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          milestone_id: string
+          order_index?: number
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          milestone_id?: string
+          order_index?: number
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          branch: Database["public"]["Enums"]["branch_type"] | null
+          created_at: string
+          id: string
+          onboarding_completed: boolean | null
+          skill_level: Database["public"]["Enums"]["skill_level"] | null
+          target_role: Database["public"]["Enums"]["target_role"] | null
+          updated_at: string
+          user_id: string
+          weekly_hours: number | null
+        }
+        Insert: {
+          branch?: Database["public"]["Enums"]["branch_type"] | null
+          created_at?: string
+          id?: string
+          onboarding_completed?: boolean | null
+          skill_level?: Database["public"]["Enums"]["skill_level"] | null
+          target_role?: Database["public"]["Enums"]["target_role"] | null
+          updated_at?: string
+          user_id: string
+          weekly_hours?: number | null
+        }
+        Update: {
+          branch?: Database["public"]["Enums"]["branch_type"] | null
+          created_at?: string
+          id?: string
+          onboarding_completed?: boolean | null
+          skill_level?: Database["public"]["Enums"]["skill_level"] | null
+          target_role?: Database["public"]["Enums"]["target_role"] | null
+          updated_at?: string
+          user_id?: string
+          weekly_hours?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +255,11 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      ai_action_type: "roadmap_generation" | "project_review"
+      branch_type: "CSE" | "IT" | "ECE"
+      skill_level: "Beginner" | "Intermediate" | "Advanced"
+      target_role: "Frontend" | "Backend" | "Full Stack"
+      task_status: "todo" | "in_progress" | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +386,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ai_action_type: ["roadmap_generation", "project_review"],
+      branch_type: ["CSE", "IT", "ECE"],
+      skill_level: ["Beginner", "Intermediate", "Advanced"],
+      target_role: ["Frontend", "Backend", "Full Stack"],
+      task_status: ["todo", "in_progress", "done"],
+    },
   },
 } as const
