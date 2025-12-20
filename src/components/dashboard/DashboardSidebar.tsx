@@ -1,15 +1,17 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Route, 
   Kanban, 
-  GitBranch, 
   TrendingUp, 
   Zap,
   LogOut,
   User
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { toast } from "sonner";
 
-type ActiveView = "roadmap" | "tasks" | "git" | "progress";
+type ActiveView = "roadmap" | "tasks" | "progress";
 
 interface DashboardSidebarProps {
   activeView: ActiveView;
@@ -19,11 +21,24 @@ interface DashboardSidebarProps {
 const navItems = [
   { id: "roadmap", label: "Roadmap", icon: Route },
   { id: "tasks", label: "Task Board", icon: Kanban },
-  { id: "git", label: "Git Workflow", icon: GitBranch },
   { id: "progress", label: "Progress", icon: TrendingUp },
 ];
 
 const DashboardSidebar = ({ activeView, setActiveView }: DashboardSidebarProps) => {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { profile } = useProfile();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Logged out successfully");
+      navigate("/");
+    } catch (err) {
+      toast.error("Failed to log out");
+    }
+  };
+
   return (
     <aside className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
@@ -64,12 +79,20 @@ const DashboardSidebar = ({ activeView, setActiveView }: DashboardSidebarProps) 
             <User className="w-5 h-5 text-sidebar-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-sidebar-foreground truncate">Student User</div>
-            <div className="text-xs text-muted-foreground truncate">Beginner Level</div>
+            <div className="text-sm font-medium text-sidebar-foreground truncate">
+              {user?.email?.split('@')[0] || 'User'}
+            </div>
+            <div className="text-xs text-muted-foreground truncate">
+              {profile?.skill_level || 'Loading...'}
+            </div>
           </div>
-          <Link to="/" className="p-2 text-muted-foreground hover:text-sidebar-foreground transition-colors">
+          <button 
+            onClick={handleLogout}
+            className="p-2 text-muted-foreground hover:text-sidebar-foreground transition-colors"
+            title="Log out"
+          >
             <LogOut className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
       </div>
     </aside>
