@@ -176,12 +176,9 @@ const TaskLearningPanel = ({ taskId, taskTitle, onReadyForTesting }: TaskLearnin
                         <p className="text-sm text-muted-foreground mt-1">
                           {video.channel}
                         </p>
-                        <button 
-                          onClick={() => window.open(video.url, '_blank', 'noopener,noreferrer')}
-                          className="text-xs text-primary hover:underline mt-1 break-all block text-left cursor-pointer"
-                        >
+                        <span className="text-xs text-muted-foreground mt-1 break-all block select-all">
                           {video.url}
-                        </button>
+                        </span>
                       </div>
                       
                       <div className="flex items-center gap-2 flex-shrink-0">
