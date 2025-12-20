@@ -1,258 +1,282 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-// Normalize YouTube URL - accept full URLs, short links, or raw video IDs
-function normalizeYouTubeUrl(input: string): string {
-  if (!input) return '';
-  
-  const trimmed = input.trim();
-  
-  // If it's just a video ID (11 characters, alphanumeric + _ -)
-  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
-    return `https://www.youtube.com/watch?v=${trimmed}`;
-  }
-  
-  // Already a full URL
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed;
-  }
-  
-  // Assume it's a video ID if nothing else matches
-  return `https://www.youtube.com/watch?v=${trimmed}`;
+// Always return 200 with JSON to avoid Lovable blank screen
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  });
 }
 
-// Extract video ID from various YouTube URL formats
-function extractVideoId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
-    /^([a-zA-Z0-9_-]{11})$/
-  ];
-  
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
-}
+function extractVideoId(input: string): string | null {
+  const s = (input || "").trim();
+  if (!s) return null;
 
-serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  // If it's already a likely videoId (no URL characters, 11 chars typical)
+  if (!s.includes("http") && !s.includes("/") && s.length >= 8 && s.length <= 16) {
+    return s;
   }
 
   try {
-    let videoUrl: string | null = null;
-    let language = 'english';
+    const u = new URL(s);
 
-    // Handle both GET and POST requests
-    if (req.method === 'GET') {
-      const url = new URL(req.url);
-      videoUrl = url.searchParams.get('url');
-      language = url.searchParams.get('language') || 'english';
-    } else if (req.method === 'POST') {
-      const body = await req.json();
-      videoUrl = body.videoUrl || body.url;
-      language = body.language || 'english';
-      
-      // Also accept videoId and construct URL
-      if (!videoUrl && body.videoId) {
-        videoUrl = `https://www.youtube.com/watch?v=${body.videoId}`;
+    // youtube.com/watch?v=VIDEO_ID
+    const v = u.searchParams.get("v");
+    if (v) return v;
+
+    // youtu.be/VIDEO_ID
+    if (u.hostname.includes("youtu.be")) {
+      const id = u.pathname.replace("/", "").split("?")[0].trim();
+      return id || null;
+    }
+
+    // youtube.com/shorts/VIDEO_ID
+    const parts = u.pathname.split("/").filter(Boolean);
+    const shortsIdx = parts.indexOf("shorts");
+    if (shortsIdx >= 0 && parts[shortsIdx + 1]) {
+      return parts[shortsIdx + 1].split("?")[0];
+    }
+
+    // youtube.com/embed/VIDEO_ID
+    const embedIdx = parts.indexOf("embed");
+    if (embedIdx >= 0 && parts[embedIdx + 1]) {
+      return parts[embedIdx + 1].split("?")[0];
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeToShortUrl(input: string): string | null {
+  const id = extractVideoId(input);
+  if (!id) return null;
+  return `https://youtu.be/${id}`;
+}
+
+interface FetchResult {
+  ok: boolean;
+  res: Response | null;
+  body: unknown;
+  retryable: boolean;
+  lastErr?: unknown;
+}
+
+async function fetchWithRetry(url: string, maxAttempts = 3): Promise<FetchResult> {
+  let lastErr: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25_000);
+
+    try {
+      console.log(`[youtube-summary] Attempt ${attempt}/${maxAttempts}: ${url}`);
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+
+      const text = await res.text();
+      let body: unknown = null;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = text;
       }
+
+      console.log(`[youtube-summary] Response status: ${res.status}`);
+
+      // Success
+      if (res.ok) {
+        clearTimeout(timeout);
+        return { ok: true, res, body, retryable: false };
+      }
+
+      // Retryable statuses: 429 (rate limit), 5xx, 408 (timeout)
+      const retryable = res.status === 429 || res.status >= 500 || res.status === 408;
+
+      if (!retryable) {
+        clearTimeout(timeout);
+        return { ok: false, res, body, retryable: false };
+      }
+
+      lastErr = { res, body };
+    } catch (e) {
+      // Abort / network error - retryable
+      console.error(`[youtube-summary] Attempt ${attempt} error:`, e);
+      lastErr = e;
+    } finally {
+      clearTimeout(timeout);
     }
 
-    if (!videoUrl) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing required parameter: url or videoUrl',
-          hint: 'Provide a YouTube URL via query param or POST body'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Backoff: 400ms, 800ms before next attempt
+    if (attempt < maxAttempts) {
+      const backoff = 400 * attempt;
+      console.log(`[youtube-summary] Waiting ${backoff}ms before retry...`);
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+
+  return { ok: false, res: null, body: null, retryable: true, lastErr };
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: CORS_HEADERS });
+  }
+
+  try {
+    const urlObj = new URL(req.url);
+
+    let inputUrl = urlObj.searchParams.get("url") ?? "";
+    let videoId = urlObj.searchParams.get("videoId") ?? "";
+    let language = (urlObj.searchParams.get("language") ?? "english").toLowerCase().trim();
+
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      inputUrl = body.url ?? body.videoUrl ?? inputUrl;
+      videoId = body.videoId ?? videoId;
+      language = (body.language ?? language).toLowerCase().trim();
     }
 
-    // Normalize the YouTube URL
-    const normalizedUrl = normalizeYouTubeUrl(videoUrl);
-    const videoId = extractVideoId(normalizedUrl);
+    // Use videoId if inputUrl is empty
+    const urlToNormalize = inputUrl || (videoId ? `https://youtu.be/${videoId}` : "");
 
-    if (!videoId) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid YouTube URL',
-          provided: videoUrl,
-          hint: 'Provide a valid YouTube URL, short link, or video ID'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const normalized = normalizeToShortUrl(urlToNormalize);
+    const extractedVideoId = extractVideoId(urlToNormalize);
+
+    if (!normalized || !extractedVideoId) {
+      console.error("[youtube-summary] Invalid input:", { inputUrl, videoId });
+      return jsonResponse({
+        success: false,
+        error: "Invalid YouTube URL or videoId.",
+        hint: "Please provide a valid YouTube video URL or ID.",
+      });
     }
 
-    console.log(`Processing video: ${videoId}, URL: ${normalizedUrl}, Language: ${language}`);
+    console.log(`[youtube-summary] Normalized URL: ${normalized}, videoId: ${extractedVideoId}`);
 
     // Check cache first
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get("Authorization");
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader! } } }
     );
 
     const { data: cached } = await supabaseClient
-      .from('video_summaries_cache')
-      .select('summary_text')
-      .eq('video_id', videoId)
+      .from("video_summaries_cache")
+      .select("summary_text")
+      .eq("video_id", extractedVideoId)
       .single();
 
     if (cached?.summary_text) {
-      console.log(`Cache hit for ${videoId}`);
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          summary: cached.summary_text, 
-          language,
-          source_url: normalizedUrl,
-          cached: true 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Cache miss for ${videoId}, calling external API...`);
-
-    // Build the API URL with proper encoding (CRITICAL)
-    const encodedUrl = encodeURIComponent(normalizedUrl);
-    const summaryApiUrl = `https://youtube-summarizer.apisimpacientes.workers.dev/summarize?url=${encodedUrl}&language=${encodeURIComponent(language)}`;
-    
-    console.log(`Calling API: ${summaryApiUrl}`);
-
-    // Timeout protection (25 seconds)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('Request timeout after 25 seconds');
-      controller.abort();
-    }, 25000);
-
-    let response: Response;
-    try {
-      response = await fetch(summaryApiUrl, {
-        method: 'GET',
-        signal: controller.signal,
+      console.log(`[youtube-summary] Cache hit for ${extractedVideoId}`);
+      return jsonResponse({
+        success: true,
+        summary: cached.summary_text,
+        language,
+        source_url: normalized,
+        cached: true,
       });
-    } catch (fetchError: unknown) {
-      clearTimeout(timeoutId);
-      
-      const err = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-      
-      if (err.name === 'AbortError') {
-        return new Response(
-          JSON.stringify({
-            error: 'Request timeout',
-            status: 504,
-            hint: 'The summarizer API took too long to respond. Try again later.',
-            source_url: normalizedUrl
-          }),
-          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    }
+
+    console.log(`[youtube-summary] Cache miss, calling external API...`);
+
+    const base = "https://youtube-summarizer.apisimpacientes.workers.dev/summarize";
+    const target = `${base}?url=${encodeURIComponent(normalized)}&language=${encodeURIComponent(language)}`;
+
+    console.log(`[youtube-summary] Calling: ${target}`);
+
+    const result = await fetchWithRetry(target, 3);
+
+    // IMPORTANT: Always return 200 to avoid Lovable blank screen
+    if (!result.ok) {
+      // If we got an HTTP response from the external API
+      if (result.res) {
+        console.error("[youtube-summary] External API failed:", {
+          status: result.res.status,
+          body: result.body,
+        });
+        return jsonResponse({
+          success: false,
+          error: "Summarizer API failed",
+          upstream_status: result.res.status,
+          upstream_statusText: result.res.statusText,
+          body: result.body,
+          hint: "This usually happens if captions/subtitles are unavailable OR the summarizer service is overloaded. Try another video or try again.",
+          source_url: normalized,
+          retryable: result.retryable,
+        });
       }
-      
-      console.error('Fetch error:', err);
-      return new Response(
-        JSON.stringify({
-          error: 'Network error',
-          status: 503,
-          message: err.message,
-          hint: 'Failed to connect to the summarizer API.',
-          source_url: normalizedUrl
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+
+      // Network/timeout error
+      console.error("[youtube-summary] Network/timeout error:", result.lastErr);
+      return jsonResponse({
+        success: false,
+        error: "Request timeout or network failure",
+        hint: "The summarizer API took too long or failed after 3 retries. Try again later.",
+        source_url: normalized,
+        retryable: true,
+      });
     }
 
-    clearTimeout(timeoutId);
-
-    // Get response body
-    const responseText = await response.text();
-    let responseData: any;
-    
-    try {
-      responseData = JSON.parse(responseText);
-    } catch {
-      responseData = { raw: responseText };
-    }
-
-    console.log(`API response status: ${response.status}, body:`, responseData);
-
-    // Error transparency - if API returned non-200
-    if (!response.ok) {
-      return new Response(
-        JSON.stringify({
-          error: 'Summarizer API failed',
-          status: response.status,
-          statusText: response.statusText,
-          body: responseData,
-          hint: 'The external summarizer API returned an error.',
-          source_url: normalizedUrl
-        }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Response validation
-    if (!responseData.success || !responseData.summary) {
-      return new Response(
-        JSON.stringify({
-          error: 'Invalid API response',
-          status: 422,
-          body: responseData,
-          hint: 'The API response was missing required fields (success/summary). This usually happens when the video has no captions.',
-          source_url: normalizedUrl
-        }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const data = result.body as Record<string, unknown>;
+    if (!data?.success || !data?.summary) {
+      console.error("[youtube-summary] No summary in response:", data);
+      return jsonResponse({
+        success: false,
+        error: "No summary returned",
+        body: data,
+        hint: "Video may not have usable subtitles/captions for summarization.",
+        source_url: normalized,
+      });
     }
 
     // Cache the successful summary
     const { error: cacheError } = await supabaseClient
-      .from('video_summaries_cache')
-      .upsert({
-        video_id: videoId,
-        summary_text: responseData.summary,
-      }, { onConflict: 'video_id' });
+      .from("video_summaries_cache")
+      .upsert(
+        {
+          video_id: extractedVideoId,
+          summary_text: data.summary as string,
+        },
+        { onConflict: "video_id" }
+      );
 
     if (cacheError) {
-      console.error('Cache write error:', cacheError);
+      console.error("[youtube-summary] Cache write error:", cacheError);
     } else {
-      console.log(`Cached summary for ${videoId}`);
+      console.log(`[youtube-summary] Cached summary for ${extractedVideoId}`);
     }
 
-    // Success response
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        summary: responseData.summary, 
-        language: responseData.language || language,
-        source_url: normalizedUrl,
-        cached: false 
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error: unknown) {
-    console.error('Unexpected error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        status: 500,
-        message,
-        hint: 'An unexpected error occurred in the edge function.'
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.log("[youtube-summary] Successfully got summary");
+    return jsonResponse({
+      success: true,
+      language: data.language ?? language,
+      summary: data.summary,
+      source_url: normalized,
+      cached: false,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[youtube-summary] Unhandled error:", msg);
+    // Return 200 to avoid app crash; include details
+    return jsonResponse({
+      success: false,
+      error: "Edge function error",
+      details: msg,
+      hint: "Check logs and try a different video with captions.",
+    });
   }
 });
