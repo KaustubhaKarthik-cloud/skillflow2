@@ -2,3 +2,9 @@ project_id = "oniwtjmaelwzdglwtbdn"
 
 [functions.ai-chat]
 verify_jwt = false
+
+[functions.generate-roadmap]
+verify_jwt = true
+
+[functions.review-submission]
+verify_jwt = true

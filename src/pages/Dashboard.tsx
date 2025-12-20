@@ -1,15 +1,23 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useRoadmap } from "@/hooks/useRoadmap";
+import { useProfile } from "@/hooks/useProfile";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import RoadmapSection from "@/components/dashboard/RoadmapSection";
-import TaskBoard from "@/components/dashboard/TaskBoard";
-import GitSimulator from "@/components/dashboard/GitSimulator";
-import ProgressStats from "@/components/dashboard/ProgressStats";
+import RoadmapView from "@/components/dashboard/RoadmapView";
+import TaskBoardView from "@/components/dashboard/TaskBoardView";
+import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import AIChatbot from "@/components/dashboard/AIChatbot";
+import { Loader2 } from "lucide-react";
 
-type ActiveView = "roadmap" | "tasks" | "git" | "progress";
+type ActiveView = "roadmap" | "tasks" | "progress";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, isLoading: profileLoading } = useProfile();
+  const { roadmap, isLoading: roadmapLoading } = useRoadmap();
   const [activeView, setActiveView] = useState<ActiveView>("roadmap");
 
   useEffect(() => {
@@ -19,18 +27,38 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (!profileLoading && profile && !profile.onboarding_completed) {
+      navigate("/onboarding");
+    }
+  }, [profile, profileLoading, navigate]);
+
+  if (authLoading || profileLoading || roadmapLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const renderContent = () => {
     switch (activeView) {
       case "roadmap":
-        return <RoadmapSection />;
+        return <RoadmapView roadmap={roadmap} />;
       case "tasks":
-        return <TaskBoard />;
-      case "git":
-        return <GitSimulator />;
+        return <TaskBoardView roadmap={roadmap} />;
       case "progress":
-        return <ProgressStats />;
+        return <ProgressDashboard roadmap={roadmap} />;
       default:
-        return <RoadmapSection />;
+        return <RoadmapView roadmap={roadmap} />;
     }
   };
 

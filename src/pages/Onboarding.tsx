@@ -1,35 +1,46 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ArrowLeft, Check, Code, Database, Globe, Smartphone, Brain, Zap } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Code, Database, Globe, Zap, Loader2, Clock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile, BranchType, SkillLevel, TargetRole } from "@/hooks/useProfile";
+import { useAIUsage } from "@/hooks/useAIUsage";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-type SkillLevel = "beginner" | "intermediate" | "advanced";
-type TechStack = "frontend" | "backend" | "fullstack" | "mobile" | "data";
-type CareerGoal = "sde" | "frontend" | "backend" | "fullstack" | "devops";
-
-const techStackOptions = [
-  { id: "frontend", label: "Frontend", icon: Globe, description: "React, Vue, HTML/CSS" },
-  { id: "backend", label: "Backend", icon: Database, description: "Node, Python, Java" },
-  { id: "fullstack", label: "Full Stack", icon: Code, description: "End-to-end development" },
-  { id: "mobile", label: "Mobile", icon: Smartphone, description: "React Native, Flutter" },
-  { id: "data", label: "Data/ML", icon: Brain, description: "Python, TensorFlow, SQL" },
+const branchOptions = [
+  { id: "CSE", label: "Computer Science", description: "CS fundamentals & algorithms" },
+  { id: "IT", label: "Information Technology", description: "Systems & networking focus" },
+  { id: "ECE", label: "Electronics & Communication", description: "Hardware & embedded systems" },
 ];
 
-const careerGoalOptions = [
-  { id: "sde", label: "Software Developer", description: "General SDE role" },
-  { id: "frontend", label: "Frontend Engineer", description: "UI/UX focused development" },
-  { id: "backend", label: "Backend Engineer", description: "APIs and infrastructure" },
-  { id: "fullstack", label: "Full Stack Developer", description: "End-to-end ownership" },
-  { id: "devops", label: "DevOps Engineer", description: "CI/CD and cloud" },
+const skillLevelOptions = [
+  { id: "Beginner", label: "Beginner", description: "Just starting out with programming" },
+  { id: "Intermediate", label: "Intermediate", description: "Know the basics, building projects" },
+  { id: "Advanced", label: "Advanced", description: "Comfortable with complex problems" },
 ];
+
+const targetRoleOptions = [
+  { id: "Frontend", label: "Frontend Developer", icon: Globe, description: "React, Vue, HTML/CSS" },
+  { id: "Backend", label: "Backend Developer", icon: Database, description: "Node, Python, APIs" },
+  { id: "Full Stack", label: "Full Stack Developer", icon: Code, description: "End-to-end development" },
+];
+
+const weeklyHoursOptions = [5, 10, 15, 20, 25, 30];
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, isLoading: profileLoading, updateProfile } = useProfile();
+  const { checkLimit, incrementUsage } = useAIUsage();
+  
   const [step, setStep] = useState(1);
+  const [branch, setBranch] = useState<BranchType | null>(null);
   const [skillLevel, setSkillLevel] = useState<SkillLevel | null>(null);
-  const [techStack, setTechStack] = useState<TechStack | null>(null);
-  const [careerGoal, setCareerGoal] = useState<CareerGoal | null>(null);
+  const [targetRole, setTargetRole] = useState<TargetRole | null>(null);
+  const [weeklyHours, setWeeklyHours] = useState(10);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
@@ -38,23 +49,92 @@ const Onboarding = () => {
     };
   }, []);
 
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  // If onboarding completed, go to dashboard
+  useEffect(() => {
+    if (profile?.onboarding_completed) {
+      navigate("/dashboard");
+    }
+  }, [profile, navigate]);
+
+  // Pre-fill form if profile exists
+  useEffect(() => {
+    if (profile) {
+      if (profile.branch) setBranch(profile.branch);
+      if (profile.skill_level) setSkillLevel(profile.skill_level);
+      if (profile.target_role) setTargetRole(profile.target_role);
+      if (profile.weekly_hours) setWeeklyHours(profile.weekly_hours);
+    }
+  }, [profile]);
+
   const canProceed = () => {
-    if (step === 1) return skillLevel !== null;
-    if (step === 2) return techStack !== null;
-    if (step === 3) return careerGoal !== null;
+    if (step === 1) return branch !== null;
+    if (step === 2) return skillLevel !== null;
+    if (step === 3) return targetRole !== null;
+    if (step === 4) return weeklyHours > 0;
     return false;
   };
 
-  const handleComplete = () => {
-    // Store preferences and navigate to dashboard
-    localStorage.setItem("skillflow_onboarding", JSON.stringify({
-      skillLevel,
-      techStack,
-      careerGoal,
-      completed: true
-    }));
-    navigate("/dashboard");
+  const handleComplete = async () => {
+    if (!branch || !skillLevel || !targetRole) return;
+
+    // Check AI usage limit
+    const { canUse } = checkLimit('roadmap_generation');
+    if (!canUse) {
+      toast.error("You've reached your daily limit for roadmap generation. Try again tomorrow!");
+      return;
+    }
+
+    setGenerating(true);
+
+    try {
+      // Update profile
+      await updateProfile.mutateAsync({
+        branch,
+        skill_level: skillLevel,
+        target_role: targetRole,
+        weekly_hours: weeklyHours,
+        onboarding_completed: true,
+      });
+
+      // Increment usage
+      await incrementUsage.mutateAsync('roadmap_generation');
+
+      // Generate roadmap
+      const { data, error } = await supabase.functions.invoke('generate-roadmap', {
+        body: {
+          branch,
+          skillLevel,
+          targetRole,
+          weeklyHours,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast.success(`Roadmap "${data.title}" created!`);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error('Error creating roadmap:', err);
+      toast.error(err instanceof Error ? err.message : "Failed to create roadmap");
+      setGenerating(false);
+    }
   };
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero dark flex items-center justify-center p-4">
@@ -73,7 +153,7 @@ const Onboarding = () => {
 
         {/* Progress indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2, 3, 4].map((s) => (
             <div
               key={s}
               className={`h-2 rounded-full transition-all duration-300 ${
@@ -90,7 +170,7 @@ const Onboarding = () => {
         {/* Card */}
         <div className="glass-strong rounded-2xl p-8">
           <AnimatePresence mode="wait">
-            {/* Step 1: Skill Level */}
+            {/* Step 1: Branch */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -99,15 +179,51 @@ const Onboarding = () => {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-2xl font-bold text-foreground mb-2">What's your current skill level?</h2>
-                <p className="text-muted-foreground mb-8">This helps us create the right starting point for you.</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">What's your branch?</h2>
+                <p className="text-muted-foreground mb-8">This helps us understand your background.</p>
 
                 <div className="space-y-3">
-                  {[
-                    { id: "beginner", label: "Beginner", description: "Just starting out with programming" },
-                    { id: "intermediate", label: "Intermediate", description: "Know the basics, building projects" },
-                    { id: "advanced", label: "Advanced", description: "Comfortable with complex problems" },
-                  ].map((option) => (
+                  {branchOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setBranch(option.id as BranchType)}
+                      className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
+                        branch === option.id
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50 bg-card/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-foreground">{option.label}</div>
+                          <div className="text-sm text-muted-foreground">{option.description}</div>
+                        </div>
+                        {branch === option.id && (
+                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="w-4 h-4 text-primary-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 2: Skill Level */}
+            {step === 2 && (
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h2 className="text-2xl font-bold text-foreground mb-2">What's your skill level?</h2>
+                <p className="text-muted-foreground mb-8">We'll tailor the difficulty accordingly.</p>
+
+                <div className="space-y-3">
+                  {skillLevelOptions.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setSkillLevel(option.id as SkillLevel)}
@@ -134,49 +250,7 @@ const Onboarding = () => {
               </motion.div>
             )}
 
-            {/* Step 2: Tech Stack */}
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <h2 className="text-2xl font-bold text-foreground mb-2">What's your preferred tech stack?</h2>
-                <p className="text-muted-foreground mb-8">Choose the area you want to focus on.</p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {techStackOptions.map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => setTechStack(option.id as TechStack)}
-                      className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                        techStack === option.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50 bg-card/50"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          techStack === option.id ? "bg-primary" : "bg-secondary"
-                        }`}>
-                          <option.icon className={`w-5 h-5 ${
-                            techStack === option.id ? "text-primary-foreground" : "text-foreground"
-                          }`} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-foreground">{option.label}</div>
-                          <div className="text-sm text-muted-foreground">{option.description}</div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 3: Career Goal */}
+            {/* Step 3: Target Role */}
             {step === 3 && (
               <motion.div
                 key="step3"
@@ -185,30 +259,71 @@ const Onboarding = () => {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-2xl font-bold text-foreground mb-2">What's your career goal?</h2>
-                <p className="text-muted-foreground mb-8">We'll tailor your roadmap to help you get there.</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">What role do you want?</h2>
+                <p className="text-muted-foreground mb-8">Choose your target career path.</p>
 
                 <div className="space-y-3">
-                  {careerGoalOptions.map((option) => (
+                  {targetRoleOptions.map((option) => (
                     <button
                       key={option.id}
-                      onClick={() => setCareerGoal(option.id as CareerGoal)}
+                      onClick={() => setTargetRole(option.id as TargetRole)}
                       className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                        careerGoal === option.id
+                        targetRole === option.id
                           ? "border-primary bg-primary/10"
                           : "border-border hover:border-primary/50 bg-card/50"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
+                      <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          targetRole === option.id ? "bg-primary" : "bg-secondary"
+                        }`}>
+                          <option.icon className={`w-5 h-5 ${
+                            targetRole === option.id ? "text-primary-foreground" : "text-foreground"
+                          }`} />
+                        </div>
+                        <div className="flex-1">
                           <div className="font-medium text-foreground">{option.label}</div>
                           <div className="text-sm text-muted-foreground">{option.description}</div>
                         </div>
-                        {careerGoal === option.id && (
+                        {targetRole === option.id && (
                           <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                             <Check className="w-4 h-4 text-primary-foreground" />
                           </div>
                         )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 4: Weekly Hours */}
+            {step === 4 && (
+              <motion.div
+                key="step4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h2 className="text-2xl font-bold text-foreground mb-2">How many hours per week?</h2>
+                <p className="text-muted-foreground mb-8">We'll size tasks based on your availability.</p>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {weeklyHoursOptions.map((hours) => (
+                    <button
+                      key={hours}
+                      onClick={() => setWeeklyHours(hours)}
+                      className={`p-4 rounded-xl border-2 text-center transition-all duration-200 ${
+                        weeklyHours === hours
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50 bg-card/50"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <Clock className={`w-5 h-5 ${weeklyHours === hours ? "text-primary" : "text-muted-foreground"}`} />
+                        <span className="font-bold text-xl text-foreground">{hours}</span>
+                        <span className="text-xs text-muted-foreground">hours</span>
                       </div>
                     </button>
                   ))}
@@ -222,14 +337,14 @@ const Onboarding = () => {
             <Button
               variant="ghost"
               onClick={() => setStep(step - 1)}
-              disabled={step === 1}
+              disabled={step === 1 || generating}
               className="gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
 
-            {step < 3 ? (
+            {step < 4 ? (
               <Button
                 variant="gradient"
                 onClick={() => setStep(step + 1)}
@@ -243,11 +358,20 @@ const Onboarding = () => {
               <Button
                 variant="hero"
                 onClick={handleComplete}
-                disabled={!canProceed()}
+                disabled={!canProceed() || generating}
                 className="gap-2"
               >
-                Create My Roadmap
-                <ArrowRight className="w-4 h-4" />
+                {generating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creating Roadmap...
+                  </>
+                ) : (
+                  <>
+                    Create My Roadmap
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </Button>
             )}
           </div>
