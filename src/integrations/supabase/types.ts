@@ -170,6 +170,50 @@ export type Database = {
           },
         ]
       }
+      task_videos: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          task_id: string
+          title: string
+          url: string
+          video_id: string
+          watched: boolean
+          watched_at: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          task_id: string
+          title: string
+          url: string
+          video_id: string
+          watched?: boolean
+          watched_at?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          title?: string
+          url?: string
+          video_id?: string
+          watched?: boolean
+          watched_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_videos_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           created_at: string
@@ -211,6 +255,114 @@ export type Database = {
           },
         ]
       }
+      testing_answers: {
+        Row: {
+          answer_text: string
+          created_at: string
+          feedback: string | null
+          id: string
+          question_id: string
+          score: number | null
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          question_id: string
+          score?: number | null
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          question_id?: string
+          score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testing_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "testing_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      testing_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          passed: boolean | null
+          reflection_feedback: string | null
+          reflection_score: number | null
+          reflection_text: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          passed?: boolean | null
+          reflection_feedback?: string | null
+          reflection_score?: number | null
+          reflection_text: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          passed?: boolean | null
+          reflection_feedback?: string | null
+          reflection_score?: number | null
+          reflection_text?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testing_attempts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      testing_questions: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          id: string
+          order_index: number
+          question_text: string
+        }
+        Insert: {
+          attempt_id: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          question_text: string
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          question_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testing_questions_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "testing_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           branch: Database["public"]["Enums"]["branch_type"] | null
@@ -247,6 +399,24 @@ export type Database = {
         }
         Relationships: []
       }
+      video_summaries_cache: {
+        Row: {
+          created_at: string
+          summary_text: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          summary_text: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          summary_text?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -259,7 +429,7 @@ export type Database = {
       branch_type: "CSE" | "IT" | "ECE"
       skill_level: "Beginner" | "Intermediate" | "Advanced"
       target_role: "Frontend" | "Backend" | "Full Stack"
-      task_status: "todo" | "in_progress" | "done"
+      task_status: "todo" | "in_progress" | "done" | "testing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -391,7 +561,7 @@ export const Constants = {
       branch_type: ["CSE", "IT", "ECE"],
       skill_level: ["Beginner", "Intermediate", "Advanced"],
       target_role: ["Frontend", "Backend", "Full Stack"],
-      task_status: ["todo", "in_progress", "done"],
+      task_status: ["todo", "in_progress", "done", "testing"],
     },
   },
 } as const

@@ -8,3 +8,18 @@ verify_jwt = true
 
 [functions.review-submission]
 verify_jwt = true
+
+[functions.youtube-search]
+verify_jwt = true
+
+[functions.youtube-summary]
+verify_jwt = true
+
+[functions.ai-evaluate-learning]
+verify_jwt = true
+
+[functions.ai-generate-questions]
+verify_jwt = true
+
+[functions.ai-evaluate-answers]
+verify_jwt = true
