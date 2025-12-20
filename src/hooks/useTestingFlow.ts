@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -52,6 +52,142 @@ export function useTestingFlow(taskId: string | null) {
   const [questions, setQuestions] = useState<TestingQuestion[]>([]);
   const [learningEvaluation, setLearningEvaluation] = useState<LearningEvaluation | null>(null);
   const [answerEvaluation, setAnswerEvaluation] = useState<AnswerEvaluation | null>(null);
+  const [isRestoring, setIsRestoring] = useState(true);
+
+  // Query to fetch existing incomplete attempt for this task
+  const { data: existingAttempt } = useQuery({
+    queryKey: ['testing-attempt', taskId, user?.id],
+    queryFn: async () => {
+      if (!taskId || !user) return null;
+
+      // Find the most recent incomplete attempt (passed is null)
+      const { data, error } = await supabase
+        .from('testing_attempts')
+        .select('*')
+        .eq('task_id', taskId)
+        .eq('user_id', user.id)
+        .is('passed', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching attempt:', error);
+        return null;
+      }
+
+      return data;
+    },
+    enabled: !!taskId && !!user,
+  });
+
+  // Query to fetch questions for existing attempt
+  const { data: existingQuestions } = useQuery({
+    queryKey: ['testing-questions', existingAttempt?.id],
+    queryFn: async () => {
+      if (!existingAttempt?.id) return [];
+
+      const { data, error } = await supabase
+        .from('testing_questions')
+        .select('*')
+        .eq('attempt_id', existingAttempt.id)
+        .order('order_index', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching questions:', error);
+        return [];
+      }
+
+      return data as TestingQuestion[];
+    },
+    enabled: !!existingAttempt?.id,
+  });
+
+  // Query to fetch existing answers
+  const { data: existingAnswers } = useQuery({
+    queryKey: ['testing-answers', existingAttempt?.id],
+    queryFn: async () => {
+      if (!existingAttempt?.id || !existingQuestions?.length) return [];
+
+      const questionIds = existingQuestions.map(q => q.id);
+      const { data, error } = await supabase
+        .from('testing_answers')
+        .select('*')
+        .in('question_id', questionIds);
+
+      if (error) {
+        console.error('Error fetching answers:', error);
+        return [];
+      }
+
+      return data;
+    },
+    enabled: !!existingAttempt?.id && !!existingQuestions?.length,
+  });
+
+  // Restore state from database when data is loaded
+  useEffect(() => {
+    if (!taskId || !user) {
+      setIsRestoring(false);
+      return;
+    }
+
+    // Wait for queries to complete
+    if (existingAttempt === undefined) return;
+
+    if (existingAttempt && existingQuestions) {
+      // Restore the attempt
+      setAttemptId(existingAttempt.id);
+      
+      // Restore learning evaluation if available
+      if (existingAttempt.reflection_score !== null) {
+        setLearningEvaluation({
+          score: existingAttempt.reflection_score,
+          feedback: existingAttempt.reflection_feedback || '',
+          strengths: '',
+          missing_concepts: '',
+          passed: existingAttempt.reflection_score >= 6,
+        });
+      }
+
+      // Restore questions
+      if (existingQuestions.length > 0) {
+        setQuestions(existingQuestions);
+        
+        // Check if all questions have answers
+        const answeredCount = existingAnswers?.length || 0;
+        
+        if (answeredCount >= existingQuestions.length && existingAnswers?.some(a => a.score !== null)) {
+          // All questions answered and evaluated - go to results
+          const evaluations = existingAnswers?.map(a => ({
+            question_id: a.question_id,
+            score: a.score || 0,
+            feedback: a.feedback || '',
+          })) || [];
+          
+          const overallScore = evaluations.reduce((sum, e) => sum + e.score, 0) / evaluations.length;
+          setAnswerEvaluation({
+            evaluations,
+            overall_score: overallScore,
+            passed: overallScore >= 6,
+            summary_feedback: 'Your answers have been evaluated.',
+          });
+          setPhase('results');
+        } else {
+          // Questions exist but not all answered - go to questions phase
+          setPhase('questions');
+        }
+      } else {
+        // Attempt exists but no questions yet - reflection was submitted
+        setPhase('reflection');
+      }
+    } else {
+      // No existing attempt - start fresh
+      setPhase('reflection');
+    }
+
+    setIsRestoring(false);
+  }, [existingAttempt, existingQuestions, existingAnswers, taskId, user]);
 
   const submitReflection = useMutation({
     mutationFn: async ({ reflection, videoSummaries, taskTitle }: { 
@@ -105,6 +241,10 @@ export function useTestingFlow(taskId: string | null) {
       setQuestions(questionsData.questions);
       setPhase('questions');
 
+      // Invalidate queries to refresh state
+      queryClient.invalidateQueries({ queryKey: ['testing-attempt', taskId, user.id] });
+      queryClient.invalidateQueries({ queryKey: ['testing-questions'] });
+
       return evalData.evaluation;
     },
   });
@@ -132,6 +272,9 @@ export function useTestingFlow(taskId: string | null) {
       setAnswerEvaluation(data.evaluation);
       setPhase('results');
 
+      // Invalidate queries to refresh state
+      queryClient.invalidateQueries({ queryKey: ['testing-answers'] });
+
       return data.evaluation;
     },
     onSuccess: () => {
@@ -139,13 +282,20 @@ export function useTestingFlow(taskId: string | null) {
     },
   });
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setPhase('reflection');
     setAttemptId(null);
     setQuestions([]);
     setLearningEvaluation(null);
     setAnswerEvaluation(null);
-  };
+    
+    // Invalidate queries to force refresh on next open
+    if (taskId && user) {
+      queryClient.invalidateQueries({ queryKey: ['testing-attempt', taskId, user.id] });
+      queryClient.invalidateQueries({ queryKey: ['testing-questions'] });
+      queryClient.invalidateQueries({ queryKey: ['testing-answers'] });
+    }
+  }, [taskId, user, queryClient]);
 
   return {
     phase,
@@ -157,5 +307,14 @@ export function useTestingFlow(taskId: string | null) {
     submitReflection,
     submitAnswers,
     reset,
+    isRestoring,
+    // Expose saved answers for restoration
+    savedAnswers: existingAnswers?.reduce((acc, a) => {
+      const question = existingQuestions?.find(q => q.id === a.question_id);
+      if (question) {
+        acc[a.question_id] = a.answer_text;
+      }
+      return acc;
+    }, {} as Record<string, string>) || {},
   };
 }
