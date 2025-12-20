@@ -84,10 +84,7 @@ const AIChatbot = () => {
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-primary-foreground" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">SkillFlow AI</h3>
-                  <p className="text-xs text-muted-foreground">Powered by DeepSeek R1</p>
-                </div>
+                <h3 className="font-semibold text-foreground">SkillFlow AI</h3>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
