@@ -85,13 +85,17 @@ export function useNextTaskSuggestions() {
 
       const result = data as SuggestionResult;
 
-      // Save to database
-      const { error: insertError } = await supabase.from('next_task_suggestions').insert({
+      // Save to database - use type assertion to bypass strict typing
+      const insertData = {
         user_id: user.id,
         generated_for_task_id: generated_for_task_id || null,
         suggestions_json: result as unknown as Record<string, unknown>,
         focus_areas: result.focus_areas || [],
-      });
+      };
+      
+      const { error: insertError } = await supabase
+        .from('next_task_suggestions')
+        .insert(insertData as any);
 
       if (insertError) throw insertError;
 
