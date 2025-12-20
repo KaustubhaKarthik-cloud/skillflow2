@@ -185,11 +185,9 @@ const TaskLearningPanel = ({ taskId, taskTitle, onReadyForTesting }: TaskLearnin
                         <Button 
                           size="sm" 
                           variant="ghost"
-                          asChild
+                          onClick={() => window.open(video.url, '_blank', 'noopener,noreferrer')}
                         >
-                          <a href={video.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
+                          <ExternalLink className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
