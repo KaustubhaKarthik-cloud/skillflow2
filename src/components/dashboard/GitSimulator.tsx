@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { GitBranch, GitCommit, Check, AlertCircle, ArrowRight } from "lucide-react";
+import { GitBranch, GitCommit, Check, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAIChat } from "@/hooks/useAIChat";
 
 interface Commit {
   id: string;
   message: string;
   branch: string;
   timestamp: string;
-  status: "valid" | "needs_improvement";
+  status: "valid" | "needs_improvement" | "pending";
   feedback?: string;
 }
 
@@ -48,34 +49,74 @@ const GitSimulator = () => {
   const [commits, setCommits] = useState<Commit[]>(sampleCommits);
   const [commitMessage, setCommitMessage] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("feature/auth");
+  const { sendMessage, isLoading } = useAIChat();
 
-  const handleCommit = () => {
+  const handleCommit = async () => {
     if (!commitMessage.trim()) {
       toast.error("Please enter a commit message");
       return;
     }
 
     const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+$/;
-    const isValid = conventionalCommitPattern.test(commitMessage);
+    const isValidFormat = conventionalCommitPattern.test(commitMessage);
 
+    const newCommitId = Date.now().toString();
     const newCommit: Commit = {
-      id: Date.now().toString(),
+      id: newCommitId,
       message: commitMessage,
       branch: selectedBranch,
       timestamp: "Just now",
-      status: isValid ? "valid" : "needs_improvement",
-      feedback: isValid 
-        ? undefined 
-        : "Follow conventional commits format: type(scope): description. Example: 'feat(auth): add login functionality'",
+      status: "pending",
     };
 
     setCommits([newCommit, ...commits]);
     setCommitMessage("");
+    toast.info("Analyzing commit with AI...");
 
-    if (isValid) {
-      toast.success("Great commit message! Following best practices.");
+    // Get AI feedback
+    const response = await sendMessage([
+      {
+        role: "user",
+        content: `Review this git commit message and provide brief, constructive feedback (2-3 sentences max):
+        
+Commit: "${commitMessage}"
+Branch: ${selectedBranch}
+
+Evaluate:
+1. Does it follow conventional commits format? (type: description or type(scope): description)
+2. Is the description clear and meaningful?
+3. Any quick improvements?
+
+Start with "✅ Good:" if it follows best practices, or "💡 Improve:" if it needs work.`
+      }
+    ]);
+
+    setCommits(prev => prev.map(c => {
+      if (c.id === newCommitId) {
+        if (response) {
+          const isGood = response.content.startsWith("✅") || isValidFormat;
+          return {
+            ...c,
+            status: isGood ? "valid" : "needs_improvement",
+            feedback: response.content
+          };
+        } else {
+          return {
+            ...c,
+            status: isValidFormat ? "valid" : "needs_improvement",
+            feedback: isValidFormat 
+              ? "Follows conventional commits format!" 
+              : "Follow conventional commits: type(scope): description"
+          };
+        }
+      }
+      return c;
+    }));
+
+    if (isValidFormat) {
+      toast.success("Commit analyzed!");
     } else {
-      toast.warning("Commit saved, but message could be improved.");
+      toast.warning("AI feedback added to your commit.");
     }
   };
 
@@ -164,9 +205,18 @@ const GitSimulator = () => {
                 </p>
               </div>
 
-              <Button variant="gradient" onClick={handleCommit} className="gap-2">
-                <GitCommit className="w-4 h-4" />
-                Commit Changes
+              <Button variant="gradient" onClick={handleCommit} disabled={isLoading} className="gap-2">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Commit with AI Review
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -183,16 +233,24 @@ const GitSimulator = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                   className={`p-4 rounded-lg border ${
-                    commit.status === "valid"
+                    commit.status === "pending"
+                      ? "bg-secondary border-border"
+                      : commit.status === "valid"
                       ? "bg-success/5 border-success/30"
                       : "bg-warning/5 border-warning/30"
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                      commit.status === "valid" ? "bg-success" : "bg-warning"
+                      commit.status === "pending" 
+                        ? "bg-muted" 
+                        : commit.status === "valid" 
+                        ? "bg-success" 
+                        : "bg-warning"
                     }`}>
-                      {commit.status === "valid" ? (
+                      {commit.status === "pending" ? (
+                        <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" />
+                      ) : commit.status === "valid" ? (
                         <Check className="w-3 h-3 text-success-foreground" />
                       ) : (
                         <AlertCircle className="w-3 h-3 text-warning-foreground" />
