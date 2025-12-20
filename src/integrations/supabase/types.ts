@@ -76,41 +76,6 @@ export type Database = {
         }
         Relationships: []
       }
-      hint_logs: {
-        Row: {
-          created_at: string
-          hint_content: string | null
-          hint_level: number
-          id: string
-          task_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          hint_content?: string | null
-          hint_level: number
-          id?: string
-          task_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          hint_content?: string | null
-          hint_level?: number
-          id?: string
-          task_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "hint_logs_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       milestones: {
         Row: {
           created_at: string
@@ -146,83 +111,6 @@ export type Database = {
           },
         ]
       }
-      next_task_suggestions: {
-        Row: {
-          created_at: string
-          focus_areas: string[] | null
-          generated_for_task_id: string | null
-          id: string
-          suggestions_json: Json
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          focus_areas?: string[] | null
-          generated_for_task_id?: string | null
-          id?: string
-          suggestions_json?: Json
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          focus_areas?: string[] | null
-          generated_for_task_id?: string | null
-          id?: string
-          suggestions_json?: Json
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "next_task_suggestions_generated_for_task_id_fkey"
-            columns: ["generated_for_task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      revision_tasks: {
-        Row: {
-          created_at: string
-          id: string
-          new_task_id: string | null
-          original_task_id: string
-          reason: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          new_task_id?: string | null
-          original_task_id: string
-          reason?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          new_task_id?: string | null
-          original_task_id?: string
-          reason?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "revision_tasks_new_task_id_fkey"
-            columns: ["new_task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "revision_tasks_original_task_id_fkey"
-            columns: ["original_task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       roadmaps: {
         Row: {
           created_at: string
@@ -246,66 +134,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      rubric_reviews: {
-        Row: {
-          clarity: number | null
-          completeness: number | null
-          correctness: number | null
-          created_at: string
-          id: string
-          issues: string | null
-          next_steps: string | null
-          overall_score: number | null
-          strengths: string | null
-          submission_id: string | null
-          task_id: string
-          user_id: string
-        }
-        Insert: {
-          clarity?: number | null
-          completeness?: number | null
-          correctness?: number | null
-          created_at?: string
-          id?: string
-          issues?: string | null
-          next_steps?: string | null
-          overall_score?: number | null
-          strengths?: string | null
-          submission_id?: string | null
-          task_id: string
-          user_id: string
-        }
-        Update: {
-          clarity?: number | null
-          completeness?: number | null
-          correctness?: number | null
-          created_at?: string
-          id?: string
-          issues?: string | null
-          next_steps?: string | null
-          overall_score?: number | null
-          strengths?: string | null
-          submission_id?: string | null
-          task_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rubric_reviews_submission_id_fkey"
-            columns: ["submission_id"]
-            isOneToOne: false
-            referencedRelation: "submissions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rubric_reviews_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       submissions: {
         Row: {
@@ -341,92 +169,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      task_attempts: {
-        Row: {
-          attempt_type: string
-          created_at: string
-          feedback: string | null
-          id: string
-          passed: boolean | null
-          score: number | null
-          task_id: string
-          user_id: string
-        }
-        Insert: {
-          attempt_type: string
-          created_at?: string
-          feedback?: string | null
-          id?: string
-          passed?: boolean | null
-          score?: number | null
-          task_id: string
-          user_id: string
-        }
-        Update: {
-          attempt_type?: string
-          created_at?: string
-          feedback?: string | null
-          id?: string
-          passed?: boolean | null
-          score?: number | null
-          task_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_attempts_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_templates: {
-        Row: {
-          acceptance_criteria: string[] | null
-          created_at: string
-          description: string | null
-          difficulty: string | null
-          estimated_hours: number | null
-          id: string
-          order_index: number | null
-          resources_hint: string[] | null
-          role: string
-          tags: string[] | null
-          title: string
-          workflow_habit: string | null
-        }
-        Insert: {
-          acceptance_criteria?: string[] | null
-          created_at?: string
-          description?: string | null
-          difficulty?: string | null
-          estimated_hours?: number | null
-          id?: string
-          order_index?: number | null
-          resources_hint?: string[] | null
-          role: string
-          tags?: string[] | null
-          title: string
-          workflow_habit?: string | null
-        }
-        Update: {
-          acceptance_criteria?: string[] | null
-          created_at?: string
-          description?: string | null
-          difficulty?: string | null
-          estimated_hours?: number | null
-          id?: string
-          order_index?: number | null
-          resources_hint?: string[] | null
-          role?: string
-          tags?: string[] | null
-          title?: string
-          workflow_habit?: string | null
-        }
-        Relationships: []
       }
       task_videos: {
         Row: {
@@ -657,48 +399,6 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weekly_hours?: number | null
-        }
-        Relationships: []
-      }
-      user_stats: {
-        Row: {
-          avg_ai_scores: number | null
-          created_at: string
-          id: string
-          readiness_score: number | null
-          streak_days: number | null
-          target_role: string | null
-          task_completion_rate: number | null
-          testing_pass_rate: number | null
-          updated_at: string
-          user_id: string
-          weakest_skills: string[] | null
-        }
-        Insert: {
-          avg_ai_scores?: number | null
-          created_at?: string
-          id?: string
-          readiness_score?: number | null
-          streak_days?: number | null
-          target_role?: string | null
-          task_completion_rate?: number | null
-          testing_pass_rate?: number | null
-          updated_at?: string
-          user_id: string
-          weakest_skills?: string[] | null
-        }
-        Update: {
-          avg_ai_scores?: number | null
-          created_at?: string
-          id?: string
-          readiness_score?: number | null
-          streak_days?: number | null
-          target_role?: string | null
-          task_completion_rate?: number | null
-          testing_pass_rate?: number | null
-          updated_at?: string
-          user_id?: string
-          weakest_skills?: string[] | null
         }
         Relationships: []
       }

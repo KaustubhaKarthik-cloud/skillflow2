@@ -25,41 +25,28 @@ serve(async (req) => {
 
     console.log(`Searching YouTube for: ${query}`);
 
-    // First try with captions filter for quality educational content
-    let searchParams = new URLSearchParams({
+    // Search for videos (medium/long duration to avoid shorts)
+    const searchParams = new URLSearchParams({
       part: 'snippet',
       q: query,
       type: 'video',
       videoDuration: 'medium', // 4-20 mins, good for tutorials
-      videoCaption: 'closedCaption', // Prefer captioned videos
       maxResults: '6',
       key: YOUTUBE_API_KEY,
     });
 
-    let searchResponse = await fetch(
+    const searchResponse = await fetch(
       `https://www.googleapis.com/youtube/v3/search?${searchParams}`
     );
 
-    let searchData = await searchResponse.json();
-
-    // Fallback: if no results with captions, retry without caption filter
-    if (!searchData.items || searchData.items.length === 0) {
-      console.log('No captioned videos found, retrying without caption filter');
-      searchParams = new URLSearchParams({
-        part: 'snippet',
-        q: query,
-        type: 'video',
-        videoDuration: 'medium',
-        maxResults: '6',
-        key: YOUTUBE_API_KEY,
-      });
-      
-      searchResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?${searchParams}`
-      );
-      searchData = await searchResponse.json();
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error('YouTube API error:', errorText);
+      throw new Error('Failed to fetch videos from YouTube');
     }
 
+    const searchData = await searchResponse.json();
+    
     const videos = searchData.items?.map((item: any) => ({
       video_id: item.id.videoId,
       title: item.snippet.title,

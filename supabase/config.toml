@@ -23,18 +23,3 @@ verify_jwt = true
 
 [functions.ai-evaluate-answers]
 verify_jwt = true
-
-[functions.ai-hint]
-verify_jwt = true
-
-[functions.ai-rubric-review]
-verify_jwt = true
-
-[functions.ai-next-task]
-verify_jwt = true
-
-[functions.ai-adaptive-roadmap]
-verify_jwt = true
-
-[functions.ai-readiness-insights]
-verify_jwt = true
