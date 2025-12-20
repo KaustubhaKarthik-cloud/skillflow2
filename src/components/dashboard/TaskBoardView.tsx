@@ -163,7 +163,7 @@ const TaskBoardView = ({ roadmap }: TaskBoardViewProps) => {
             />
           )}
 
-          {selectedTask && dialogMode === 'testing' && (videoSummaries.length > 0 || storedSummaries.length > 0) && (
+          {selectedTask && dialogMode === 'testing' && (
             <TaskTestingPanel
               taskId={selectedTask.id}
               taskTitle={selectedTask.title}
