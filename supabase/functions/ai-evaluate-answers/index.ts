@@ -31,25 +31,39 @@ serve(async (req) => {
       `Q${i + 1}: ${a.question}\nA${i + 1}: ${a.answer}`
     ).join('\n\n');
 
-    const systemPrompt = `You are an expert educator evaluating student answers to comprehension questions about video tutorials.
+    const systemPrompt = `You are SkillFlow Answer Evaluator AI, a strict but fair reviewer.
 
-Evaluate each answer based on:
-1. Understanding of the concept
-2. Accuracy of information
-3. Practical application awareness
+GOAL
+Evaluate the user's answers to questions based on the combined video summary. Do not hallucinate. If an answer is partially correct, explain what is missing.
 
-Return ONLY valid JSON with this exact structure:
+RULES
+- Score each answer 0–10.
+- Explain mistakes clearly.
+- Provide a short ideal answer (not long, not copy-paste code).
+- Decide pass/fail for the whole attempt.
+
+PASS RULE
+pass = true only if:
+- average_score >= 7
+- and no answer is below 4
+
+OUTPUT (STRICT JSON ONLY)
 {
-  "evaluations": [
+  "average_score": number,
+  "pass": boolean,
+  "per_question": [
     {
       "question_id": "<question id>",
-      "score": <number 0-10>,
-      "feedback": "<specific feedback for this answer>"
+      "question": string,
+      "user_answer": string,
+      "score": number,
+      "feedback": string,
+      "ideal_answer": string,
+      "missing_points": [string]
     }
   ],
-  "overall_score": <average score 0-10>,
-  "passed": <boolean, true if overall_score >= 6>,
-  "summary_feedback": "<overall feedback and next steps>"
+  "final_message": string,
+  "recommended_revision": [string]
 }`;
 
     const userPrompt = `Task Topic: ${taskTitle}
