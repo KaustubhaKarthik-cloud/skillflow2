@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Roadmap, Task, useRoadmap } from "@/hooks/useRoadmap";
 import { useAIUsage } from "@/hooks/useAIUsage";
+import { useTestingFlow } from "@/hooks/useTestingFlow";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, Clock, Circle, Star, FlaskConical } from "lucide-react";
@@ -29,6 +30,16 @@ const TaskBoardView = ({ roadmap }: TaskBoardViewProps) => {
   const [selectedTask, setSelectedTask] = useState<(Task & { milestoneName: string }) | null>(null);
   const [dialogMode, setDialogMode] = useState<'learning' | 'testing'>('learning');
   const [videoSummaries, setVideoSummaries] = useState<string[]>([]);
+  
+  // Use testing flow to get stored summaries
+  const { storedSummaries } = useTestingFlow(selectedTask?.id || null);
+  
+  // Update videoSummaries when stored summaries are loaded
+  useEffect(() => {
+    if (storedSummaries && storedSummaries.length > 0 && videoSummaries.length === 0) {
+      setVideoSummaries(storedSummaries);
+    }
+  }, [storedSummaries, videoSummaries.length]);
 
   if (!roadmap) {
     return (
@@ -58,7 +69,12 @@ const TaskBoardView = ({ roadmap }: TaskBoardViewProps) => {
   const handleTaskClick = (task: Task & { milestoneName: string }) => {
     if (task.status === 'done') return;
     setSelectedTask(task);
-    setDialogMode(task.status === 'testing' ? 'testing' : 'learning');
+    // For testing status, check if we have stored summaries, otherwise show learning
+    if (task.status === 'testing') {
+      setDialogMode('testing');
+    } else {
+      setDialogMode('learning');
+    }
     setVideoSummaries([]);
   };
 
@@ -147,11 +163,11 @@ const TaskBoardView = ({ roadmap }: TaskBoardViewProps) => {
             />
           )}
 
-          {selectedTask && dialogMode === 'testing' && videoSummaries.length > 0 && (
+          {selectedTask && dialogMode === 'testing' && (videoSummaries.length > 0 || storedSummaries.length > 0) && (
             <TaskTestingPanel
               taskId={selectedTask.id}
               taskTitle={selectedTask.title}
-              videoSummaries={videoSummaries}
+              videoSummaries={videoSummaries.length > 0 ? videoSummaries : storedSummaries}
               onComplete={handleTestingComplete}
               onBack={() => setDialogMode('learning')}
             />

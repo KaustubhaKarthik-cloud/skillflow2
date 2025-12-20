@@ -300,6 +300,7 @@ export type Database = {
           reflection_text: string
           task_id: string
           user_id: string
+          video_summaries: string[] | null
         }
         Insert: {
           created_at?: string
@@ -310,6 +311,7 @@ export type Database = {
           reflection_text: string
           task_id: string
           user_id: string
+          video_summaries?: string[] | null
         }
         Update: {
           created_at?: string
@@ -320,6 +322,7 @@ export type Database = {
           reflection_text?: string
           task_id?: string
           user_id?: string
+          video_summaries?: string[] | null
         }
         Relationships: [
           {

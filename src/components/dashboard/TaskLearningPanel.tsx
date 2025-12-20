@@ -54,37 +54,69 @@ const TaskLearningPanel = ({ taskId, taskTitle, onReadyForTesting }: TaskLearnin
     }
   };
 
+  // Helper function to process videos in batches with concurrency limit
+  const processBatchWithConcurrency = async <T, R>(
+    items: T[],
+    processor: (item: T) => Promise<R>,
+    concurrency: number
+  ): Promise<R[]> => {
+    const results: R[] = [];
+    const batches: T[][] = [];
+    
+    // Split items into batches
+    for (let i = 0; i < items.length; i += concurrency) {
+      batches.push(items.slice(i, i + concurrency));
+    }
+    
+    // Process each batch concurrently
+    for (const batch of batches) {
+      const batchResults = await Promise.all(batch.map(processor));
+      results.push(...batchResults);
+    }
+    
+    return results;
+  };
+
   const handleStartTesting = async () => {
     if (!videos) return;
     
     setLoadingSummaries(true);
     try {
       const watchedVideos = videos.filter(v => v.watched);
-      const summaries: string[] = [];
       let failedCount = 0;
 
-      for (const video of watchedVideos) {
-        const { data, error } = await supabase.functions.invoke('youtube-summary', {
-          body: { videoId: video.video_id, videoUrl: video.url },
-        });
+      // Process videos with concurrency of 5
+      const summaryResults = await processBatchWithConcurrency(
+        watchedVideos,
+        async (video) => {
+          try {
+            const { data, error } = await supabase.functions.invoke('youtube-summary', {
+              body: { videoId: video.video_id, videoUrl: video.url },
+            });
 
-        if (error) {
-          console.error('Summary invoke error:', error);
-          failedCount++;
-          continue;
-        }
-        
-        // Check for success: false responses (API always returns 200 now)
-        if (!data.success) {
-          console.warn('Summary failed for video:', video.video_id, data.error, data.hint);
-          failedCount++;
-          continue;
-        }
-        
-        if (data.summary) {
-          summaries.push(data.summary);
-        }
-      }
+            if (error) {
+              console.error('Summary invoke error:', error);
+              return null;
+            }
+            
+            // Check for success: false responses (API always returns 200 now)
+            if (!data.success) {
+              console.warn('Summary failed for video:', video.video_id, data.error, data.hint);
+              return null;
+            }
+            
+            return data.summary || null;
+          } catch (err) {
+            console.error('Error fetching summary for video:', video.video_id, err);
+            return null;
+          }
+        },
+        5 // Concurrency limit of 5
+      );
+
+      // Filter out null results
+      const summaries = summaryResults.filter((s): s is string => s !== null);
+      failedCount = watchedVideos.length - summaries.length;
 
       if (summaries.length === 0) {
         toast.error('Could not get video summaries. Some videos may not have captions. Please try different videos.');

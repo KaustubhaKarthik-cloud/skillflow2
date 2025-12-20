@@ -53,6 +53,7 @@ export function useTestingFlow(taskId: string | null) {
   const [learningEvaluation, setLearningEvaluation] = useState<LearningEvaluation | null>(null);
   const [answerEvaluation, setAnswerEvaluation] = useState<AnswerEvaluation | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
+  const [storedSummaries, setStoredSummaries] = useState<string[]>([]);
 
   // Query to fetch existing incomplete attempt for this task
   const { data: existingAttempt } = useQuery({
@@ -76,7 +77,7 @@ export function useTestingFlow(taskId: string | null) {
         return null;
       }
 
-      return data;
+      return data as (TestingAttempt & { video_summaries?: string[] | null }) | null;
     },
     enabled: !!taskId && !!user,
   });
@@ -139,6 +140,12 @@ export function useTestingFlow(taskId: string | null) {
       // Restore the attempt
       setAttemptId(existingAttempt.id);
       
+      // Restore video summaries if available
+      const attemptWithSummaries = existingAttempt as (TestingAttempt & { video_summaries?: string[] | null });
+      if (attemptWithSummaries.video_summaries && attemptWithSummaries.video_summaries.length > 0) {
+        setStoredSummaries(attemptWithSummaries.video_summaries);
+      }
+      
       // Restore learning evaluation if available
       if (existingAttempt.reflection_score !== null) {
         setLearningEvaluation({
@@ -197,19 +204,21 @@ export function useTestingFlow(taskId: string | null) {
     }) => {
       if (!taskId || !user) throw new Error('Missing task or user');
 
-      // Create testing attempt
+      // Create testing attempt with video summaries stored
       const { data: attempt, error: attemptError } = await supabase
         .from('testing_attempts')
         .insert({
           task_id: taskId,
           user_id: user.id,
           reflection_text: reflection,
+          video_summaries: videoSummaries, // Store summaries for later restoration
         })
         .select()
         .single();
 
       if (attemptError) throw attemptError;
       setAttemptId(attempt.id);
+      setStoredSummaries(videoSummaries);
 
       // Evaluate learning
       const { data: evalData, error: evalError } = await supabase.functions.invoke('ai-evaluate-learning', {
@@ -288,6 +297,7 @@ export function useTestingFlow(taskId: string | null) {
     setQuestions([]);
     setLearningEvaluation(null);
     setAnswerEvaluation(null);
+    setStoredSummaries([]);
     
     // Invalidate queries to force refresh on next open
     if (taskId && user) {
@@ -308,6 +318,7 @@ export function useTestingFlow(taskId: string | null) {
     submitAnswers,
     reset,
     isRestoring,
+    storedSummaries, // Expose stored summaries for restoration
     // Expose saved answers for restoration
     savedAnswers: existingAnswers?.reduce((acc, a) => {
       const question = existingQuestions?.find(q => q.id === a.question_id);
