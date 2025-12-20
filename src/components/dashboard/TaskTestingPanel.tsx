@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTestingFlow, TestingPhase } from '@/hooks/useTestingFlow';
 import { Button } from '@/components/ui/button';
@@ -41,10 +41,19 @@ const TaskTestingPanel = ({
     submitReflection,
     submitAnswers,
     reset,
+    isRestoring,
+    savedAnswers,
   } = useTestingFlow(taskId);
 
   const [reflection, setReflection] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  // Restore saved answers when they become available
+  useEffect(() => {
+    if (savedAnswers && Object.keys(savedAnswers).length > 0) {
+      setAnswers(prev => ({ ...savedAnswers, ...prev }));
+    }
+  }, [savedAnswers]);
 
   const minReflectionLength = 80;
   const isReflectionValid = reflection.trim().length >= minReflectionLength;
@@ -102,6 +111,16 @@ const TaskTestingPanel = ({
     onComplete(passed);
     reset();
   };
+
+  // Show loading while restoring state
+  if (isRestoring) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Restoring your progress...</span>
+      </div>
+    );
+  }
 
   // Render based on phase
   if (phase === 'reflection') {
