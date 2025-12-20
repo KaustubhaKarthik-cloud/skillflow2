@@ -341,24 +341,26 @@ const TaskTestingPanel = ({
               </CardContent>
             </Card>
 
-            <div className="space-y-3">
-              <h4 className="font-medium text-foreground">Question Feedback</h4>
-              {answerEvaluation.evaluations.map((evaluation, index) => (
-                <Card key={evaluation.question_id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-foreground">
-                        Question {index + 1}
-                      </span>
-                      <Badge variant={evaluation.score >= 6 ? 'default' : 'secondary'}>
-                        {evaluation.score}/10
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{evaluation.feedback}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {answerEvaluation.evaluations && answerEvaluation.evaluations.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-medium text-foreground">Question Feedback</h4>
+                {answerEvaluation.evaluations.map((evaluation, index) => (
+                  <Card key={evaluation.question_id || index}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-foreground">
+                          Question {index + 1}
+                        </span>
+                        <Badge variant={evaluation.score >= 6 ? 'default' : 'secondary'}>
+                          {evaluation.score}/10
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{evaluation.feedback}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </>
         )}
 
