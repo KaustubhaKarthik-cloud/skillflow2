@@ -61,6 +61,7 @@ const TaskLearningPanel = ({ taskId, taskTitle, onReadyForTesting }: TaskLearnin
     try {
       const watchedVideos = videos.filter(v => v.watched);
       const summaries: string[] = [];
+      let failedCount = 0;
 
       for (const video of watchedVideos) {
         const { data, error } = await supabase.functions.invoke('youtube-summary', {
@@ -68,7 +69,15 @@ const TaskLearningPanel = ({ taskId, taskTitle, onReadyForTesting }: TaskLearnin
         });
 
         if (error) {
-          console.error('Summary error:', error);
+          console.error('Summary invoke error:', error);
+          failedCount++;
+          continue;
+        }
+        
+        // Check for success: false responses (API always returns 200 now)
+        if (!data.success) {
+          console.warn('Summary failed for video:', video.video_id, data.error, data.hint);
+          failedCount++;
           continue;
         }
         
@@ -78,13 +87,18 @@ const TaskLearningPanel = ({ taskId, taskTitle, onReadyForTesting }: TaskLearnin
       }
 
       if (summaries.length === 0) {
-        toast.error('Could not get video summaries. Please try again.');
+        toast.error('Could not get video summaries. Some videos may not have captions. Please try different videos.');
         return;
+      }
+
+      if (failedCount > 0 && summaries.length > 0) {
+        toast.warning(`Got ${summaries.length} summaries, ${failedCount} video(s) failed (no captions available).`);
       }
 
       onReadyForTesting(summaries);
     } catch (err) {
-      toast.error('Failed to prepare testing');
+      console.error('Failed to prepare testing:', err);
+      toast.error('Failed to prepare testing. Please try again.');
     } finally {
       setLoadingSummaries(false);
     }
