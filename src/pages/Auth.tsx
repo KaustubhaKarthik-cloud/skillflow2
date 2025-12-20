@@ -196,42 +196,45 @@ const Auth = () => {
             }}>
                 {/* Decorative sparkles */}
                 <div className="relative inline-block mb-4">
-                  <motion.div
-                    className="absolute -top-2 -left-4 w-2 h-2 bg-primary rounded-full"
-                    animate={{
-                      scale: [1, 1.5, 1],
-                      opacity: [0.5, 1, 0.5],
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                  <motion.div
-                    className="absolute -top-1 -right-3 w-1.5 h-1.5 bg-accent rounded-full"
-                    animate={{
-                      scale: [1, 1.8, 1],
-                      opacity: [0.3, 1, 0.3],
-                    }}
-                    transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
-                  />
-                  <motion.div
-                    className="absolute bottom-0 -right-5 w-1 h-1 bg-primary/70 rounded-full"
-                    animate={{
-                      scale: [1, 2, 1],
-                      opacity: [0.4, 1, 0.4],
-                    }}
-                    transition={{ duration: 1.8, repeat: Infinity, delay: 1 }}
-                  />
+                  <motion.div className="absolute -top-2 -left-4 w-2 h-2 bg-primary rounded-full" animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [0.5, 1, 0.5]
+                }} transition={{
+                  duration: 2,
+                  repeat: Infinity
+                }} />
+                  <motion.div className="absolute -top-1 -right-3 w-1.5 h-1.5 bg-accent rounded-full" animate={{
+                  scale: [1, 1.8, 1],
+                  opacity: [0.3, 1, 0.3]
+                }} transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  delay: 0.5
+                }} />
+                  <motion.div className="absolute bottom-0 -right-5 w-1 h-1 bg-primary/70 rounded-full" animate={{
+                  scale: [1, 2, 1],
+                  opacity: [0.4, 1, 0.4]
+                }} transition={{
+                  duration: 1.8,
+                  repeat: Infinity,
+                  delay: 1
+                }} />
                   
-                  <motion.span 
-                    className="text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 inline-flex items-center gap-1.5"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <motion.span
-                      className="w-1.5 h-1.5 rounded-full bg-success"
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    />
+                  <motion.span className="text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 inline-flex items-center gap-1.5" initial={{
+                  opacity: 0,
+                  scale: 0.8
+                }} animate={{
+                  opacity: 1,
+                  scale: 1
+                }} transition={{
+                  delay: 0.5
+                }}>
+                    <motion.span className="w-1.5 h-1.5 rounded-full bg-success" animate={{
+                    scale: [1, 1.2, 1]
+                  }} transition={{
+                    duration: 1.5,
+                    repeat: Infinity
+                  }} />
                     {mode === "login" && "Welcome back"}
                     {mode === "signup" && "Join 10k+ learners"}
                     {mode === "forgot" && "Quick recovery"}
@@ -239,50 +242,57 @@ const Auth = () => {
                 </div>
                 
                 <h1 className="text-3xl font-bold mb-3 relative">
-                  <motion.span 
-                    className="bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent bg-[length:200%_100%]"
-                    animate={{
-                      backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
-                    }}
-                    transition={{
-                      duration: 5,
-                      repeat: Infinity,
-                      ease: "linear"
-                    }}
-                  >
+                  <motion.span animate={{
+                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                }} transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: "linear"
+                }} className="bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text bg-[length:200%_100%] text-primary">
                     {mode === "login" && "Sign in to SkillFlow"}
                     {mode === "signup" && "Create your account"}
                     {mode === "forgot" && "Reset your password"}
                   </motion.span>
                   
                   {/* Underline animation */}
-                  <motion.div 
-                    className="absolute -bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent"
-                    initial={{ width: 0, x: "-50%" }}
-                    animate={{ width: "60%", x: "-50%" }}
-                    transition={{ delay: 0.8, duration: 0.6, ease: "easeOut" }}
-                  />
+                  <motion.div className="absolute -bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent" initial={{
+                  width: 0,
+                  x: "-50%"
+                }} animate={{
+                  width: "60%",
+                  x: "-50%"
+                }} transition={{
+                  delay: 0.8,
+                  duration: 0.6,
+                  ease: "easeOut"
+                }} />
                 </h1>
                 
-                <motion.p 
-                  className="text-muted-foreground/80 flex items-center justify-center gap-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                >
-                  <motion.span
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
+                <motion.p className="text-muted-foreground/80 flex items-center justify-center gap-2" initial={{
+                opacity: 0
+              }} animate={{
+                opacity: 1
+              }} transition={{
+                delay: 0.6
+              }}>
+                  <motion.span animate={{
+                  opacity: [0.5, 1, 0.5]
+                }} transition={{
+                  duration: 2,
+                  repeat: Infinity
+                }}>
                     ✨
                   </motion.span>
                   {mode === "login" && "Continue your learning journey"}
                   {mode === "signup" && "Start your personalized learning path today"}
                   {mode === "forgot" && "We'll send you reset instructions"}
-                  <motion.span
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-                  >
+                  <motion.span animate={{
+                  opacity: [0.5, 1, 0.5]
+                }} transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  delay: 1
+                }}>
                     ✨
                   </motion.span>
                 </motion.p>
@@ -386,7 +396,7 @@ const Auth = () => {
             }}>
                 {mode === "login" && <p className="text-muted-foreground/70">
                     Don't have an account?{" "}
-                    <button onClick={() => setMode("signup")} className="text-primary font-semibold hover:text-primary/80 transition-colors">
+                    <button onClick={() => setMode("signup")} className="font-semibold transition-colors text-primary-foreground">
                       Sign up for free
                     </button>
                   </p>}
