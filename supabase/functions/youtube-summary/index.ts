@@ -41,10 +41,17 @@ serve(async (req) => {
 
     console.log(`Fetching summary for video: ${videoId}`);
 
-    // Fetch transcript summary
+    // Fetch transcript summary with extended timeout (60 seconds)
     const summaryUrl = `https://youtube-summarizer.apisimpacientes.workers.dev/summarize?url=${encodeURIComponent(videoUrl)}&language=english`;
     
-    const response = await fetch(summaryUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    
+    const response = await fetch(summaryUrl, {
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       console.error('Summary API error:', await response.text());
