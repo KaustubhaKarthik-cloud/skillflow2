@@ -8,6 +8,7 @@ import { Zap, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { z } from "zod";
+import InteractiveBackground from "@/components/auth/InteractiveBackground";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -121,10 +122,9 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero dark flex items-center justify-center p-4">
-      {/* Background effects */}
-      <div className="absolute inset-0 bg-glow opacity-30" />
-      <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--border)/0.2)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border)/0.2)_1px,transparent_1px)] bg-[size:60px_60px]" />
+    <div className="min-h-screen bg-background dark flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Interactive Background */}
+      <InteractiveBackground />
 
       <div className="relative z-10 w-full max-w-md">
         {/* Logo */}
