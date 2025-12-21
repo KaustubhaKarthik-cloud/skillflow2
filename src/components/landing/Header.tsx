@@ -1,11 +1,31 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleDashboardClick = () => {
+    setIsMenuOpen(false);
+    if (!loading && !user) {
+      navigate("/auth");
+    } else {
+      navigate("/dashboard");
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
@@ -22,20 +42,29 @@ const Header = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
-              <Link to="/#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <button 
+                onClick={() => scrollToSection("features")} 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Features
-              </Link>
-              <Link to="/#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              </button>
+              <button 
+                onClick={() => scrollToSection("how-it-works")} 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
                 How it works
-              </Link>
-              <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              </button>
+              <button 
+                onClick={handleDashboardClick} 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Dashboard
-              </Link>
+              </button>
             </div>
 
             {/* Desktop CTA */}
             <div className="hidden md:flex items-center gap-3">
-              <Link to="/dashboard">
+              <Link to="/auth">
                 <Button variant="ghost" size="sm">Log in</Button>
               </Link>
               <Link to="/onboarding">
@@ -62,32 +91,29 @@ const Header = () => {
                 className="md:hidden pt-4 border-t border-border mt-4"
               >
                 <div className="flex flex-col gap-4">
-                  <Link 
-                    to="/#features" 
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
+                  <button 
+                    onClick={() => scrollToSection("features")}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                   >
                     Features
-                  </Link>
-                  <Link 
-                    to="/#how-it-works" 
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
+                  </button>
+                  <button 
+                    onClick={() => scrollToSection("how-it-works")}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                   >
                     How it works
-                  </Link>
-                  <Link 
-                    to="/dashboard" 
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
+                  </button>
+                  <button 
+                    onClick={handleDashboardClick}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                   >
                     Dashboard
-                  </Link>
+                  </button>
                   <div className="flex gap-3 pt-2">
-                    <Link to="/dashboard" className="flex-1">
+                    <Link to="/auth" className="flex-1" onClick={() => setIsMenuOpen(false)}>
                       <Button variant="ghost" size="sm" className="w-full">Log in</Button>
                     </Link>
-                    <Link to="/onboarding" className="flex-1">
+                    <Link to="/onboarding" className="flex-1" onClick={() => setIsMenuOpen(false)}>
                       <Button variant="gradient" size="sm" className="w-full">Get Started</Button>
                     </Link>
                   </div>
