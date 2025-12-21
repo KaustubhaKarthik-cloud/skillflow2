@@ -21,11 +21,23 @@ const skillLevelOptions = [
   { id: "Advanced", label: "Advanced", description: "Comfortable with complex problems" },
 ];
 
-const targetRoleOptions = [
-  { id: "Frontend", label: "Frontend Developer", icon: Globe, description: "React, Vue, HTML/CSS" },
-  { id: "Backend", label: "Backend Developer", icon: Database, description: "Node, Python, APIs" },
-  { id: "Full Stack", label: "Full Stack Developer", icon: Code, description: "End-to-end development" },
-];
+const targetRoleOptionsByBranch: Record<BranchType, { id: string; label: string; icon: typeof Globe; description: string }[]> = {
+  CSE: [
+    { id: "Frontend", label: "Frontend Developer", icon: Globe, description: "React, Vue, HTML/CSS" },
+    { id: "Backend", label: "Backend Developer", icon: Database, description: "Node, Python, APIs" },
+    { id: "Full Stack", label: "Full Stack Developer", icon: Code, description: "End-to-end development" },
+  ],
+  IT: [
+    { id: "Frontend", label: "IT Systems Administrator", icon: Database, description: "Networks, servers, infrastructure" },
+    { id: "Backend", label: "Cloud Engineer", icon: Globe, description: "AWS, Azure, DevOps" },
+    { id: "Full Stack", label: "IT Support Specialist", icon: Code, description: "Technical support & troubleshooting" },
+  ],
+  ECE: [
+    { id: "Frontend", label: "Embedded Systems Developer", icon: Code, description: "Microcontrollers, firmware" },
+    { id: "Backend", label: "IoT Engineer", icon: Globe, description: "Connected devices, sensors" },
+    { id: "Full Stack", label: "Hardware Design Engineer", icon: Database, description: "Circuit design, PCB layout" },
+  ],
+};
 
 const weeklyHoursOptions = [5, 10, 15, 20, 25, 30];
 
@@ -263,7 +275,7 @@ const Onboarding = () => {
                 <p className="text-muted-foreground mb-8">Choose your target career path.</p>
 
                 <div className="space-y-3">
-                  {targetRoleOptions.map((option) => (
+                  {(branch ? targetRoleOptionsByBranch[branch] : []).map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setTargetRole(option.id as TargetRole)}
