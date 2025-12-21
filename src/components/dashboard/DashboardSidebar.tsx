@@ -32,10 +32,16 @@ const DashboardSidebar = ({ activeView, setActiveView }: DashboardSidebarProps) 
   const handleLogout = async () => {
     try {
       await signOut();
+      // Clear any cached data
+      localStorage.removeItem('sb-oniwtjmaelwzdglwtbdn-auth-token');
       toast.success("Logged out successfully");
-      navigate("/");
+      // Force navigation to auth page to ensure fresh login
+      navigate("/auth", { replace: true });
     } catch (err) {
-      toast.error("Failed to log out");
+      // Even if signOut fails, clear local storage and redirect
+      localStorage.removeItem('sb-oniwtjmaelwzdglwtbdn-auth-token');
+      toast.success("Logged out successfully");
+      navigate("/auth", { replace: true });
     }
   };
 
@@ -88,10 +94,10 @@ const DashboardSidebar = ({ activeView, setActiveView }: DashboardSidebarProps) 
           </div>
           <button 
             onClick={handleLogout}
-            className="p-2 text-muted-foreground hover:text-sidebar-foreground transition-colors"
+            className="p-2 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
             title="Log out"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>
