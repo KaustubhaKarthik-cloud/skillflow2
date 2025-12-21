@@ -112,7 +112,18 @@ Evaluate each answer and respond with JSON only.`;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        evaluation = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        // Normalize the response to expected format
+        evaluation = {
+          evaluations: (parsed.per_question || parsed.evaluations || []).map((q: any) => ({
+            question_id: q.question_id,
+            score: q.score,
+            feedback: q.feedback,
+          })),
+          overall_score: parsed.average_score ?? parsed.overall_score ?? 0,
+          passed: parsed.pass ?? parsed.passed ?? false,
+          summary_feedback: parsed.final_message || parsed.summary_feedback || 'Evaluation complete.',
+        };
       } else {
         throw new Error('No JSON found');
       }
@@ -156,6 +167,11 @@ Evaluate each answer and respond with JSON only.`;
         }
       }
     }
+
+    // Ensure pass is based on 7/10 threshold (average_score >= 7 and no answer below 4)
+    const avgScore = evaluation.overall_score;
+    const hasLowScore = evaluation.evaluations.some((e: any) => e.score < 4);
+    evaluation.passed = avgScore >= 7 && !hasLowScore;
 
     // Update attempt with final result
     const { error: updateError } = await supabaseClient
