@@ -173,10 +173,11 @@ export function useTestingFlow(taskId: string | null) {
           })) || [];
           
           const overallScore = evaluations.reduce((sum, e) => sum + e.score, 0) / evaluations.length;
+          const hasLowScore = evaluations.some(e => e.score < 4);
           setAnswerEvaluation({
             evaluations,
             overall_score: overallScore,
-            passed: overallScore >= 6,
+            passed: overallScore >= 7 && !hasLowScore, // Pass requires 7/10 average and no score below 4
             summary_feedback: 'Your answers have been evaluated.',
           });
           setPhase('results');
