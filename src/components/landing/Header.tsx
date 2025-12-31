@@ -54,6 +54,12 @@ const Header = () => {
               >
                 How it works
               </button>
+              <Link 
+                to="/pricing" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Pricing
+              </Link>
               <button 
                 onClick={handleDashboardClick} 
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -103,6 +109,13 @@ const Header = () => {
                   >
                     How it works
                   </button>
+                  <Link 
+                    to="/pricing"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Pricing
+                  </Link>
                   <button 
                     onClick={handleDashboardClick}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
