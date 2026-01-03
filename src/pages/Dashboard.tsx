@@ -4,12 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoadmap } from "@/hooks/useRoadmap";
 import { useProfile } from "@/hooks/useProfile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import RoadmapView from "@/components/dashboard/RoadmapView";
 import TaskBoardView from "@/components/dashboard/TaskBoardView";
 import ProgressDashboard from "@/components/dashboard/ProgressDashboard";
 import AIChatbot from "@/components/dashboard/AIChatbot";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu, X } from "lucide-react";
 
 type ActiveView = "roadmap" | "tasks" | "progress";
 
@@ -19,6 +20,8 @@ const Dashboard = () => {
   const { profile, isLoading: profileLoading } = useProfile();
   const { roadmap, isLoading: roadmapLoading } = useRoadmap();
   const [activeView, setActiveView] = useState<ActiveView>("roadmap");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
@@ -62,17 +65,46 @@ const Dashboard = () => {
     }
   };
 
+  const handleViewChange = (view: ActiveView) => {
+    setActiveView(view);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
-      <DashboardSidebar activeView={activeView} setActiveView={setActiveView} />
+      {/* Mobile hamburger button */}
+      {isMobile && (
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-sidebar border border-sidebar-border shadow-lg"
+          aria-label="Toggle menu"
+        >
+          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      )}
+
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - always visible on desktop, conditional on mobile */}
+      <div className={`${isMobile ? 'fixed z-40 transition-transform duration-300' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'}`}>
+        <DashboardSidebar activeView={activeView} setActiveView={handleViewChange} />
+      </div>
       
-      <main className="flex-1 overflow-auto">
+      <main className={`flex-1 overflow-auto ${!isMobile ? 'ml-0' : ''}`}>
         <motion.div
           key={activeView}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="p-6 lg:p-8"
+          className={`p-6 lg:p-8 ${isMobile ? 'pt-16' : ''}`}
         >
           {renderContent()}
         </motion.div>
